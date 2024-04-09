@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "cesium": "^1.112.0",
+    "dayjs": "^1.11.10",
     "element-plus": "^2.4.4",
+    "satellite.js": "^5.0.0",
     "vue": "^3.3.10",
     "vue-router": "^4.2.5",
     "vuex": "^4.0.2"

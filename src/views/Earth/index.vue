@@ -10,12 +10,16 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 
 import wdInfoMap from "@/utils/module/windowInfoUtil"
 
+import { SatelliteManger } from "@/modules/SatelliteManager";
+import { GroundStationEntity } from "@/modules/GroundStationEntity"
+
 window.CESIUM_BASE_URL = '/node_modules/cesium/Build/Cesium';
 
 export default {
     data() {
         return {
             viewer: undefined,
+            sats: undefined,
         }
     },
     mounted() {
@@ -46,9 +50,11 @@ export default {
             homeButton: false,
             navigationHelpButton: false,
             navigationInstructionsInitiallyVisible: false,
-            sceneModePicker: false,
+            sceneModePicker: true,
             selectionIndicator: false,
         });
+
+        this.sats = new SatelliteManger(this.viewer)
 
         // Cesium default settings
         // 设置自动播放时钟
@@ -62,12 +68,31 @@ export default {
         // 启用了请求渲染模式，允许场景在必要时请求进行渲染
         this.viewer.scene.requestRenderMode = true;
 
-        console.log("finished...")
-        console.log("wdInfoMap...", wdInfoMap)
+        console.log("viewer load finished...")
+        console.log("windows infomation:", wdInfoMap)
         // 初始化windowSize,存入store
         this.updateWindowSize(wdInfoMap.getwindowSize())
         // 加载初始卫星
-        this.loadSatelliteTrack()
+        // this.loadSatelliteTrack()
+
+        // 测试部分-----------------------------------------------------
+        // Tle上传一个卫星轨道
+        this.addSatelliteFromTle(() => {
+            this.enableSatelliteFromTle()
+            console.log("complete...")
+            console.log("SatellateManager...", this.sats.satellites)
+            // 创建连线
+            // this.viewer.entities.add({
+            //     polyline: {
+            //         positions: [this.sats.satellites[0].props.sampledPosition.inertial,
+            //         this.sats.satellites[1].props.sampledPosition.inertial],
+            //         width: 2,
+            //         material: Cesium.Color.GREEN
+            //     }
+            // })
+            // console.log("satelliteCollection",this.sats.satellites[0].props.sampledPosition.inertial)
+        })
+        // this.setGroundStationFromGeolocation()
     },
     methods: {
         ...mapActions({
@@ -82,8 +107,51 @@ export default {
                 // 加载实体
                 dronePromise.then((dataSource) => {
                     this.viewer.dataSources.add(dronePromise);
+                    // console.log('dataSource...',dataSource)
+                    // 通过ID选择需要轨迹的实体
+                    console.log("datasource-array...", dataSource.entities._entities._array)
+                    dataSource.entities._entities._array.forEach((ele) => {
+                        this.viewer.entities.add(ele)
+
+                        let entityColor, entityImage, imageColor
+                        // 实体之间的连线
+                        if (ele.path === undefined && ele.polyline !== undefined) {
+                            let curColor = ele.polyline.material.color, image
+                            let randomNumber = Math.floor(Math.random() * 10)
+                            if (6 < randomNumber && randomNumber <= 9) {
+                                image = "bar-line-red.png";
+                            } else if (3 < randomNumber && randomNumber <= 6) {
+                                image = "bar-line-blue.png";
+                            } else {
+                                image = "bar-line-red.png";
+                            }
+
+                            ele.polyline.material = new Cesium.LineFlowMaterialProperty({
+                                color: curColor,
+                                speed: 50,
+                                percent: 0.5,
+                                gradient: 0.1,
+                            });
+                        }
+
+                        // 1. 配置样式与路径
+                        if (ele.label != undefined) {
+                            ele.label.show = false;
+                        }
+                    })
                 });
             }, 0)
+        },
+
+        addSatelliteFromTle(cb = null) {
+            // this.sats.addFromTleUrl('/tle/iss.txt', ['station'], true, cb)
+            this.sats.addFromTleUrl('/tle/starlink.txt', ['station'], true, cb)
+            // this.sats.addFromTleUrl('/tle/o3bfm.txt', ['station'], true, cb)
+            // this.sats.addFromTleUrl('/tle/mystar.txt', ['station'], true, cb)
+        },
+        enableSatelliteFromTle() {
+            this.sats.enableComponents('Point')
+            this.sats.enableComponents('Orbit')
         },
         // 加载地球图层(data/cesium-assets/imagery/NaturalEarthII)
         createImageryLayer(url) {
@@ -98,6 +166,20 @@ export default {
             const layer = Cesium.ImageryLayer.fromProviderAsync(provider.create())
             layer.alpha = provider.alpha
             return layer
+        },
+        // 地面站------------------------------
+        setGroundStationFromGeolocation() {
+            navigator.geolocation.getCurrentPosition((position) => {
+                if (typeof position === "undefined") {
+                    return;
+                }
+                const coordinates = {};
+                coordinates.longitude = position.coords.longitude;
+                coordinates.latitude = position.coords.latitude;
+                coordinates.height = position.coords.altitude;
+                coordinates.cartesian = Cesium.Cartesian3.fromDegrees(coordinates.longitude, coordinates.latitude, coordinates.height);
+                this.groundStation = new GroundStationEntity(this.viewer, coordinates)
+            });
         }
     },
     computed: {
