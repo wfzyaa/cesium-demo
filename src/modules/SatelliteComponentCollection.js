@@ -9,6 +9,7 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
         // 卫星数据资源存放于props属性
         this.props = new SatelliteProperties(tle, tags)
         this.eventListeners = {}
+        this.created = false
 
     }
 
@@ -16,21 +17,37 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
         if (!this.created) {
             this.init()
         }
-        console.log('渲染卫星实例中...')
         this.createComponent(name)
         super.enableComponent(name)
     }
 
-    // 初始化一次
+    disableComponent(name) {
+        super.disableComponent(name)
+        this.deleteComponent(name)
+    }
+
+
+    deleteAllComponent() {
+        this.disableComponent("Point")
+        this.disableComponent("Orbit")
+        this.disableComponent("3D model")
+        this.disableComponent("Area")
+    }
+
+
+    // 添加卫星位置采样刷新的监听器
     init() {
         // this.createDescription()
         // 监听时间轴的变花
         this.eventListeners.sampledPosition = this.props.createSampledPosition(this.viewer, () => {
             this.updatedSampledPositionForComponents(true)
-            console.warn("inited...!!!")
+            console.log("采样更新...")
         })
+        console.log("成功添加航天器位置自动采样器")
+        this.created = true
     }
 
+    // 更新Cesium实体的位置属性
     updatedSampledPositionForComponents(update = false) {
         const { fixed, inertial } = this.props.sampledPosition
 
@@ -43,13 +60,10 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
                     this.disableComponent("Orbit")
                     this.enableComponent("Orbit")
                 }
-            } else if (type === "Sensor cone") {
-                component.position = fixed
-                component.orientation = new Cesium.CallbackProperty((time) => {
-                    const position = this.props.position(time)
-                    const hpr = new Cesium.HeadingPitchRoll(0, Cesium.Math.toRadians(180), 0)
-                    return Cesium.Transforms.headingPitchRollQuaternion(position, hpr)
-                }, false)
+            } else if (type === "Area") {
+                super.disableComponent("Area")
+                this.createArea()
+
             } else {
                 component.position = fixed
                 component.orientation = new Cesium.VelocityOrientationProperty(fixed)
@@ -64,6 +78,13 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
         }
     }
 
+    // 移除监听器
+    deinit() {
+        this.eventListeners.sampledPosition();
+        this.created = false
+    }
+
+
     createComponent(name) {
         switch (name) {
             case "Point":
@@ -75,11 +96,22 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
             case "3D model":
                 this.createModel()
                 break
+            case "Area":
+                this.createArea()
+                break
             default:
                 console.error("Unknown component")
         }
     }
 
+    deleteComponent(name) {
+        this.deleteCesiumEntity(name)
+    }
+
+
+    createCesiumSatelliteEntity(entityName, entityKey, entityValue) {
+        this.createCesiumEntity(entityName, entityKey, entityValue, this.props.name, this.description, this.props.sampledPosition.fixed, true)
+    }
     // createDescription() {
     //     this.description = DescriptionHelper.cachedCallbackProperty((time) => {
     //         const cartographic = this.props.orbit.positionGeodetic(Cesium.JulianDate.toDate(time), true);
@@ -101,21 +133,6 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
 
     // 创建轨迹
     createOrbit() {
-        this.createOrbitPath()
-        return
-        // 以下是用于提升性能的方法
-        if (this.isTracked) {
-            // Use a path graphic to visualize the currently tracked satellite's orbit
-            this.createOrbitPath();
-        } else {
-            // For all other satellites use a polyline geometry to visualize the orbit for significantly improved performance.
-            // A polyline geometry is used instead of a polyline graphic as entities don't support adjusting the model matrix
-            // in order to display the orbit in the inertial frame.
-            this.createOrbitPolylineGeometry();
-        }
-    }
-
-    createOrbitPath() {
         const path = new Cesium.PathGraphics({
             leadTime: (this.props.orbit.orbitalPeriod * 60) / 2 + 5,
             trailTime: (this.props.orbit.orbitalPeriod * 60) / 2 + 5,
@@ -124,24 +141,6 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
             width: 2,
         })
         this.createCesiumEntity("Orbit", "path", path, this.props.name, this.description, this.props.sampledPosition.inertial, true)
-    }
-
-    createOrbitPolylineGeometry() {
-        // Currently unused
-        const geometryInstance = new Cesium.GeometryInstance({
-            geometry: new Cesium.PolylineGeometry({
-                positions: this.props.getSampledInertialPositionsForNextOrbit(this.viewer.clock.currentTime),
-                width: 2,
-                arcType: Cesium.ArcType.NONE,
-                // granularity: Cesium.Math.RADIANS_PER_DEGREE * 10,
-                vertexFormat: Cesium.PolylineColorAppearance.VERTEX_FORMAT,
-            }),
-            attributes: {
-                color: Cesium.ColorGeometryInstanceAttribute.fromColor(new Cesium.Color(1.0, 1.0, 1.0, 0.15)),
-            },
-            id: this.props.name,
-        })
-        this.components.Orbit = geometryInstance
     }
 
     // 创建模型
@@ -154,7 +153,27 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
         // this.createCesiumSatelliteEntity("3D model", "model", model)
     }
 
-    createCesiumSatelliteEntity(entityName, entityKey, entityValue) {
-        this.createCesiumEntity(entityName, entityKey, entityValue, this.props.name, this.description, this.props.sampledPosition.fixed, true)
+    // 创建覆盖区域-------------------------------
+    createArea() {
+        // 创建圆形区域
+        const entity = new Cesium.Entity(
+            {
+                position: new Cesium.CallbackProperty((time, result) => {
+                    const sourpos = this.props.position(time);
+                    const cartographic1 = Cesium.Cartographic.fromCartesian(sourpos);
+                    const lon = Cesium.Math.toDegrees(cartographic1.longitude);
+                    const lat = Cesium.Math.toDegrees(cartographic1.latitude);
+
+                    return Cesium.Cartesian3.fromDegrees(lon, lat);
+                }, false),
+                ellipse: {
+                    semiMinorAxis: 2600000.0, // 设置圆的半短轴长度
+                    semiMajorAxis: 2600000.0, // 设置圆的半长轴长度
+                    material: Cesium.Color.fromCssColorString('rgba(255, 0, 0, 0.5)'),
+                },
+            }
+        )
+        this.viewer.entities.add(entity);
+        this.components["Area"] = entity
     }
 }

@@ -6,9 +6,8 @@ export class CesiumComponentCollection {
     static geometries = []
     static primitive = undefined
 
-    constructor(viewer, lazy = true) {
+    constructor(viewer) {
         this.viewer = viewer
-        this.lazy = lazy
     }
 
     get isSelected() {
@@ -17,6 +16,10 @@ export class CesiumComponentCollection {
 
     get isTracked() {
         return Object.values(this.components).some((entity) => this.viewer.trackedEntity === entity)
+    }
+
+    get components() {
+        return this.components
     }
 
     // 创建Cesium实体，并添加到字典中
@@ -33,26 +36,17 @@ export class CesiumComponentCollection {
 
         entity[entityKey] = entityValue;
         this.components[componentName] = entity;
-        console.log("THISCOMPONENTS...",this.components)
+        console.log("THISCOMPONENTS...", this.components)
     }
 
-    get components() {
-        return this.components
+    // 删除Cesium实体
+    deleteCesiumEntity(componentName) {
+        if (!(componentName in this.components)) {
+            return
+        }
+        delete this.components[componentName]
     }
 
-    // 在页面中显示实体
-    show(componentNames = this.componentNames) {
-        componentNames.forEach((componentName) => {
-            this.enableComponent(componentName);
-        });
-    }
-
-    // 在页面中隐藏
-    hide(componentNames = this.componentNames) {
-        componentNames.forEach((componentName) => {
-            this.disableComponent(componentName);
-        });
-    }
 
     enableComponent(name) {
         if (!(name in this.components)) {
@@ -87,10 +81,6 @@ export class CesiumComponentCollection {
         } else if (component instanceof Cesium.GeometryInstance) {
             this.constructor.geometries = this.constructor.geometries.filter((geometry) => geometry !== component);
             this.recreateGeometryInstancePrimitive();
-        }
-
-        if (this.lazy) {
-            delete this.components[name];
         }
 
     }

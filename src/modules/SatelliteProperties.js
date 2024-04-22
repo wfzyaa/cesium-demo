@@ -32,6 +32,8 @@ export class SatelliteProperties {
         callback(this.sampledPosition)
 
         const samplingRefreshRate = (this.orbit.orbitalPeriod * 60) / 4
+
+        // 创建一个触发器，按时间轴间隔触发
         const removeCallback = CesiumCallbackHelper.createPeriodicTimeCallback(viewer, samplingRefreshRate, (time) => {
             this.updateSampledPosition(time)
             callback(this.sampledPosition)
@@ -194,6 +196,7 @@ export class SatelliteProperties {
     }
 
     position(time) {
+        return this.sampledPosition.fixed.getValue(time);
     }
 
 

@@ -1,4 +1,5 @@
 @import './base.css';
+@import './oruga.scss';
 
 #app {
   /* max-width: 1280px;

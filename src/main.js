@@ -4,6 +4,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import store from './store'
+import { Tooltip } from "@oruga-ui/oruga-next"
 
 
 // 全局引入图标
@@ -17,5 +18,6 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 
 app.use(router)
 app.use(store)
+app.use(Tooltip)
 
 app.mount('#app')

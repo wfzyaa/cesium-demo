@@ -8,7 +8,7 @@ export class SatelliteManger {
     // 导入卫星数据部分-------------------------------------------
     // 从文件中添加卫星数据
     // 组件中调用时默认根目录为“public/data”
-    async addFromTleUrl(url, tags, updateStore, cb = null) {
+    async addFromTleUrl(url, tags, cb = null) {
         url = this.redirectTleUrl(url)
         try {
             const response = await fetch(url, {
@@ -21,10 +21,17 @@ export class SatelliteManger {
             const response_1 = response;
             const data = await response_1.text();
             const lines = data.split(/\r?\n/);
+
+            let n = 0
             for (let i = 0; i < lines.length; i + 3) {
                 const tle = lines.splice(i, i + 3).join("\n");
-                this.addFromTle(tle, tags, updateStore);
+                this.addFromTle(tle, tags);
+                n++
             }
+
+            console.log("成功读取" + n + "颗卫星的TLE数据，且均封装为SatelliteComponentCollection对象")
+            console.log('satellites...', this.satellites)
+
             if (cb) {
                 cb()
             }
@@ -43,13 +50,9 @@ export class SatelliteManger {
     }
 
     // 从文件中读取卫星参数，并转为SatelliteComponentCollection类便于Cesium调用
-    addFromTle(tle, tags, updateStore = true) {
-        console.log("input tle...", tle)
+    addFromTle(tle, tags) {
         const sat = new SatelliteComponentCollection(this.viewer, tle, tags)
         this.add(sat)
-        if (updateStore) {
-            this.updateStore()
-        }
     }
 
     // 将新卫星数据添加至satellites数组中管理
@@ -57,13 +60,39 @@ export class SatelliteManger {
         // sat.props.satnum === newSat.props.satnum &&
         const existingSat = this.satellites.find((sat) => sat.props.name === newSat.props.name)
         if (existingSat) {
-            console.log('existingSat...', true)
-            // existingSat.props.addTags(newSat.props.tags)
             return
         }
         this.satellites.push(newSat)
-        console.log('satellites...', this.satellites)
     }
+
+    // 删除所有卫星
+    deleteAll() {
+        if (this.satellites.length == 0) {
+            return
+        }
+        this.satellites.forEach((sat) => {
+            // 解除Cesium的渲染，删除对应Cesium资源
+            sat.deleteAllComponent()
+            // 移除监听器
+            sat.deinit()
+        })
+        // 清空卫星列表
+        this.satellites = []
+    }
+
+
+    // // 监听器资源分配部分-----------------------------------------
+    // createMonitor() {
+    //     this.satellites.forEach((sat) => {
+    //         sat.init()
+    //     })
+    // }
+    // deleteMonitor() {
+    //     this.satellites.forEach((sat) => {
+    //         sat.deinit()
+    //     })
+    // }
+
 
     // 视图控制部分--------------------------------------------
     // 开启卫星某一资源的视图渲染
@@ -73,10 +102,27 @@ export class SatelliteManger {
         })
     }
 
-    updateStore() {
-        console.log('updateStore...')
-        // const satStore = useSatStore()
-        // satStore.availableTags = this.tags
-        // satStore.availableSatellitesByTag = this.taplist
+    // 关闭卫星某一资源的视图渲染
+    disableComponents(name) {
+        this.satellites.forEach((sat) => {
+            sat.disableComponent(name)
+        })
     }
+
+    // 开启单个卫星某一资源的视图渲染
+    enableSingle(satelliteName, name) {
+        const existingSat = this.satellites.find((sat) => sat.props.name === satelliteName)
+        if (existingSat) {
+            existingSat.enableComponent(name)
+        }
+    }
+
+    // 关闭单个卫星某一资源的视图渲染
+    enableSingle(satelliteName, name) {
+        const existingSat = this.satellites.find((sat) => sat.props.name === satelliteName)
+        if (existingSat) {
+            existingSat.disableComponent(name)
+        }
+    }
+
 }

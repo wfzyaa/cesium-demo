@@ -2,7 +2,7 @@ import * as Cesium from "@cesium/engine"
 import dayjs from "dayjs"
 import { CesiumComponentCollection } from "./utils/CesiumComponentCollection"
 
-import icon from "../images/icons/dish.svg"
+import icon from "@/images/icons/dish.svg"
 
 export class GroundStationEntity extends CesiumComponentCollection {
     constructor(viewer, position) {
