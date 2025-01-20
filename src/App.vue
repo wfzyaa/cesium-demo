@@ -1,14 +1,15 @@
 <template>
   <div id="vue-admin-better">
-    <RouterView />
+    <Earth />
   </div>
 </template>
 <script>
+import Earth from '@/views/Earth/index.vue'
 import wdUtil from '@/utils/module/windowInfoUtil'
 import wdInfoMap from "@/utils/module/windowInfoUtil"
-import { RouterView } from 'vue-router'
 import { mapActions } from 'vuex';
 export default {
+  components: { Earth },
   created() {
     // 创建窗口监听器
     wdUtil.setWindowSizeListener()

@@ -1,22 +1,11 @@
 <template>
-    <div v-bind:style="{ width: screenSize.width + 'px', height: screenSize.height - 60 + 'px' }" id="cesiumContainer">
+    <div v-bind:style="{ width: screenSize.width + 'px', height: screenSize.height + 'px' }" id="cesiumContainer">
 
         <div class="left top-box">
             <span style="display:flex">
                 <ButtonComponent type="satellite" label="卫星选择" @click="changeMenu('satellite')"></ButtonComponent>
                 <ButtonComponent type="ground" label="地面站选择" @click="changeMenu('ground')"></ButtonComponent>
                 <ButtonComponent type="link" label="通讯链路演示" @click="changeMenu('link')"></ButtonComponent>
-                <el-button style="margin-top:2px;margin-left:2px;" type="success" @click="download">
-                    导出轨道文件
-                    <el-icon class="el-icon--right">
-                        <Download />
-                    </el-icon>
-                </el-button>
-                <!-- <el-button native-type="file" style="margin-top:2px;margin-left:6px;" type="primary">导入轨道文件
-                    <el-icon class="el-icon--right">
-                        <Upload />
-                    </el-icon>
-                </el-button> -->
             </span>
             <SatelliteSelect ref="satelliteSelect" v-if="shownMenu" :nowSatelliteGroup="nowSatelliteGroup"
                 :type="shownMenu" :satelliteGroup="satelliteGroup" :linkMode="linkMode"
@@ -249,26 +238,8 @@ export default {
         },
 
         // 按钮事件--------------------------------------
-        download() {
-            const string = this.sats.originData
-            if (!string) {
-                return
-            }
-            const blob = new Blob([string], {
-                type: "text/plain;charset=utf-8"
-            })
-            const objectURL = URL.createObjectURL(blob)
-            const aTag = document.createElement('a')
-            aTag.href = objectURL
-            aTag.download = this.nowSatelliteGroup + ".txt"
-            aTag.click()
-            URL.revokeObjectURL(objectURL)
-        },
 
         // 上传
-        handlePreview(file) {
-            console.log(file)
-        },
 
         changeMenu(name) {
             for (let key in this.Menu) {
