@@ -11,6 +11,7 @@
   "dependencies": {
     "@oruga-ui/oruga-next": "^0.8.7",
     "@oruga-ui/theme-oruga": "^0.2.2",
+    "axios": "^1.6.8",
     "cesium": "^1.112.0",
     "dayjs": "^1.11.10",
     "element-plus": "^2.4.4",

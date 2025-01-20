@@ -30,6 +30,14 @@ export default class Orbit {
         return period
     }
 
+    get initialTime() {
+        return this.satrec.epoch
+    }
+
+    dayNumber(time) {
+        return time / (1000 * 60 * 60 * 24) / orbitalPeriod()
+    }
+
     // 返回卫星某时刻的惯性坐标系(x,y,z)
     positionECI(time) {
         // 返回卫星在某时刻在ECI坐标系中的位置和速度（星历数据）
@@ -50,19 +58,20 @@ export default class Orbit {
         const { position: positionEci, velocity: velocityVector } = satellitejs.propagate(this.satrec, timestamp)
         const gmst = satellitejs.gstime(timestamp)
         const positionGd = satellitejs.eciToGeodetic(positionEci, gmst)
-
         return {
             // 经度
-            longitude: positionGd.longitude * rad2deg,
+            longitude: (positionGd.longitude * rad2deg).toFixed(6),
             // 纬度
-            latitude: positionGd.latitude * rad2deg,
+            latitude: (positionGd.latitude * rad2deg).toFixed(6),
             // 高度
-            height: positionGd.height * 1000,
+            height: (positionGd.height * 1000).toFixed(6),
+            // 周期
+            period: (this.orbitalPeriod).toFixed(6),
             // 速度
             ...(calculateVelocity && {
-                velocity: Math.sqrt(velocityVector.x * velocityVector.x +
+                velocity: (Math.sqrt(velocityVector.x * velocityVector.x +
                     velocityVector.y * velocityVector.y +
-                    velocityVector.z * velocityVector.z),
+                    velocityVector.z * velocityVector.z)).toFixed(6),
             }),
         }
     }

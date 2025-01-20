@@ -1,14 +1,25 @@
 <template>
   <div id="vue-admin-better">
-    <Layouts />
+    <RouterView />
   </div>
 </template>
 <script>
-import Layouts from '@/layouts/index.vue'
+import wdUtil from '@/utils/module/windowInfoUtil'
+import wdInfoMap from "@/utils/module/windowInfoUtil"
+import { RouterView } from 'vue-router'
+import { mapActions } from 'vuex';
 export default {
-  components: {
-    Layouts,
+  created() {
+    // 创建窗口监听器
+    wdUtil.setWindowSizeListener()
+
+    // 初始化windowSize,存入store
+    this.updateWindowSize(wdInfoMap.getwindowSize())
   },
-  // 其他组件内容
-};      
+  methods: {
+    ...mapActions({
+      updateWindowSize: 'setWindowSize',
+    }),
+  },
+}
 </script>

@@ -3,7 +3,7 @@ import Orbit from "./Orbit"
 import { CesiumCallbackHelper } from "./utils/CesiumCallbackHelper";
 
 export class SatelliteProperties {
-    constructor(tle, tags = []) {
+    constructor(tle, tags = [], angle) {
         // 读取卫星名
         this.name = tle.split("\n")[0].trim()
         if (tle.startsWith("0 ")) {
@@ -13,6 +13,9 @@ export class SatelliteProperties {
         this.orbit = new Orbit(this.name, tle)
         this.satnum = this.orbit.satnum
         this.tags = tags
+        // 信号扩散角度
+        this.angle = angle
+        this.tanValue = Math.tan(angle * Math.PI / 180)
 
 
         // this.groundStationPosition = undefined
@@ -31,6 +34,7 @@ export class SatelliteProperties {
         this.updateSampledPosition(viewer.clock.currentTime)
         callback(this.sampledPosition)
 
+        // 设置采样刷新间隔为1/4个轨道周期
         const samplingRefreshRate = (this.orbit.orbitalPeriod * 60) / 4
 
         // 创建一个触发器，按时间轴间隔触发
@@ -51,7 +55,8 @@ export class SatelliteProperties {
         // 采样间隔
         const samplingPointsPerOrbit = 120
         const orbitalPeriod = this.orbit.orbitalPeriod * 60
-        // 表示每隔多久采样一次
+        
+        // 采样间隔
         const samplingInterval = orbitalPeriod / samplingPointsPerOrbit
 
         // Always keep half an orbit backwards and 1.5 full orbits forward in the sampled position
@@ -199,14 +204,27 @@ export class SatelliteProperties {
         return this.sampledPosition.fixed.getValue(time);
     }
 
+    getLongitude(time) {
+        const ellipsoid = Cesium.Ellipsoid.WGS84
+        const cartographic = ellipsoid.cartesianToCartographic(this.position(time))
+        return Cesium.Math.toDegrees(cartographic.longitude)
+    }
 
-    // addTags(tags) {
-    //     this.tags = [...new Set(this.tags.concat(tags))]
-    // }
+    getLatitude(time) {
+        const ellipsoid = Cesium.Ellipsoid.WGS84
+        const cartographic = ellipsoid.cartesianToCartographic(this.position(time))
+        return Cesium.Math.toDegrees(cartographic.latitude)
+    }
 
-    // position(time) {
-    //     return this.sampledPosition.fixed.getValue(time)
-    // }
+    getHeight(time) {
+        const ellipsoid = Cesium.Ellipsoid.WGS84
+        const cartographic = ellipsoid.cartesianToCartographic(this.position(time))
+        return cartographic.height
+    }
+
+    getMaxLinkDistance(time) {
+        return 9677085
+    }
 
 
 }

@@ -4,13 +4,13 @@ import { CesiumComponentCollection } from "./utils/CesiumComponentCollection"
 import { SatelliteProperties } from "./SatelliteProperties"
 
 export class SatelliteComponentCollection extends CesiumComponentCollection {
-    constructor(viewer, tle, tags) {
+    constructor(viewer, tle, tags, angle = 24.0547) {
         super(viewer)
         // 卫星数据资源存放于props属性
-        this.props = new SatelliteProperties(tle, tags)
+        this.props = new SatelliteProperties(tle, tags, angle)
         this.eventListeners = {}
         this.created = false
-
+        this.dataListener = undefined
     }
 
     enableComponent(name) {
@@ -159,21 +159,59 @@ export class SatelliteComponentCollection extends CesiumComponentCollection {
         const entity = new Cesium.Entity(
             {
                 position: new Cesium.CallbackProperty((time, result) => {
-                    const sourpos = this.props.position(time);
-                    const cartographic1 = Cesium.Cartographic.fromCartesian(sourpos);
-                    const lon = Cesium.Math.toDegrees(cartographic1.longitude);
-                    const lat = Cesium.Math.toDegrees(cartographic1.latitude);
-
+                    const lon = this.props.getLongitude(time)
+                    const lat = this.props.getLatitude(time)
                     return Cesium.Cartesian3.fromDegrees(lon, lat);
                 }, false),
                 ellipse: {
-                    semiMinorAxis: 2600000.0, // 设置圆的半短轴长度
-                    semiMajorAxis: 2600000.0, // 设置圆的半长轴长度
+                    // 设置圆的半短轴长度
+                    semiMinorAxis: new Cesium.CallbackProperty((time, result) => {
+                        const r = this.props.tanValue * this.props.getHeight(time)
+                        return r
+                    }, false),
+                    // 设置圆的半长轴长度
+                    semiMajorAxis: new Cesium.CallbackProperty((time, result) => {
+                        const r = this.props.tanValue * this.props.getHeight(time)
+                        return r
+                    }, false),
                     material: Cesium.Color.fromCssColorString('rgba(255, 0, 0, 0.5)'),
                 },
             }
         )
         this.viewer.entities.add(entity);
         this.components["Area"] = entity
+
+    }
+
+
+
+    // 监听卫星实时数据------------------------------------------------------------
+    getAllDistance(cb = null) {
+        const data = this.props.orbit.positionGeodetic(Cesium.JulianDate.toDate(this.viewer.clock.currentTime), true)
+        if (cb) {
+            cb(data)
+        }
+    }
+
+    wrappedGetAllDistance(cb) {
+        return () => {
+            this.getAllDistance(cb)
+        }
+    }
+
+    // 添加数据监听器
+    listenData(cb) {
+        if (!this.dataListener) {
+            const event = this.wrappedGetAllDistance(cb)
+            this.viewer.clock.onTick.addEventListener(event)
+            this.dataListener = event
+        }
+    }
+
+    deListenData() {
+        if (this.dataListener) {
+            this.viewer.clock.onTick.removeEventListener(this.dataListener)
+            this.dataListener = undefined
+        }
     }
 }

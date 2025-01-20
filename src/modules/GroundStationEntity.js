@@ -5,11 +5,12 @@ import { CesiumComponentCollection } from "./utils/CesiumComponentCollection"
 import icon from "@/images/icons/dish.svg"
 
 export class GroundStationEntity extends CesiumComponentCollection {
-    constructor(viewer, position) {
+    constructor(viewer, position, name = "GroundStation") {
         super(viewer)
 
-        this.name = "Ground station"
+        this.name = name
         this.position = position
+        console.log("position",this.position)
 
         this.createEntities()
     }
